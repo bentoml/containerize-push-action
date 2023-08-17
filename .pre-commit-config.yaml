@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3a569ca95749f562ff8b742e3568a077caeb5eb7
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: local
+    hooks:
+      - id: all
+        name: Run all tools
+        entry: yarn run all
+        verbose: true
+        language: node
+        additional_dependencies: [yarn]
