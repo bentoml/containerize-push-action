@@ -3,6 +3,7 @@ import * as stateHelper from './state-helper';
 import * as core from '@actions/core';
 import * as actionsToolkit from '@docker/actions-toolkit';
 import {Context} from '@docker/actions-toolkit/lib/context';
+import {Inputs as BuildxInputs} from '@docker/actions-toolkit/lib/buildx/inputs';
 import {Docker} from '@docker/actions-toolkit/lib/docker/docker';
 import {GitHub} from '@docker/actions-toolkit/lib/github';
 import {Toolkit} from '@docker/actions-toolkit/lib/toolkit';
@@ -63,16 +64,20 @@ actionsToolkit.run(
         await Helpers.getExecOutput('bentoml', ['list'], {silent: true}).then(res => {
           core.info(res.stdout.match(/(.*)\s*$/)?.[0]?.trim() ?? 'non available');
         });
-        await Helpers.getExecOutput('bentoml', ['get', inputs.bentoTag], {
-          ignoreReturnCode: true,
-          silent: true
-        }).then(res => {
-          if (res.stderr.length > 0 && res.exitCode != 0) {
-            throw new Error(`Failed to get available Bento ${inputs.bentoTag}: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
-          }
+        await Helpers.getExecOutput('bentoml', ['models', 'list'], {silent: true}).then(res => {
+          core.info(res.stdout.match(/(.*)\s*$/)?.[0]?.trim() ?? 'non available');
         });
       } catch (e) {
         core.info(e.message);
+      }
+    });
+
+    await Helpers.getExecOutput('bentoml', ['get', inputs.bentoTag], {
+      ignoreReturnCode: true,
+      silent: true
+    }).then(res => {
+      if (res.stderr.length > 0 && res.exitCode != 0) {
+        throw new Error(`Failed to get available Bento ${inputs.bentoTag}: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
       }
     });
 
@@ -83,19 +88,36 @@ actionsToolkit.run(
     });
 
     const args: string[] = await context.getArgs(inputs, toolkit);
-    await core.group(`bentoml containerize`, async () => {
-      try {
-        await Helpers.getExecOutput('bentoml', args, {
-          ignoreReturnCode: true
-        }).then(res => {
-          if (res.stderr.length > 0 && res.exitCode != 0) {
-            throw new Error(`bentoml containerize failed with: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
-          }
-        });
-      } catch (e) {
-        core.info(e.message);
+    await Helpers.getExecOutput('bentoml', args, {
+      ignoreReturnCode: true
+    }).then(res => {
+      if (res.stderr.length > 0 && res.exitCode != 0) {
+        throw new Error(`bentoml containerize failed with: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
       }
     });
+
+    const imageID = BuildxInputs.resolveBuildImageID();
+    const metadata = BuildxInputs.resolveBuildMetadata();
+    const digest = BuildxInputs.resolveDigest();
+
+    if (imageID) {
+      await core.group(`ImageID`, async () => {
+        core.info(imageID);
+        core.setOutput('imageid', imageID);
+      });
+    }
+    if (digest) {
+      await core.group(`Digest`, async () => {
+        core.info(digest);
+        core.setOutput('digest', digest);
+      });
+    }
+    if (metadata) {
+      await core.group(`Metadata`, async () => {
+        core.info(metadata);
+        core.setOutput('metadata', metadata);
+      });
+    }
   },
   // post
   async () => {
