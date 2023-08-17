@@ -7,6 +7,7 @@ import {Util} from '@docker/actions-toolkit/lib/util';
 
 export interface Inputs {
   bentoTag: string;
+  ociBackend: string;
   addHosts: string[];
   allow: string[];
   buildArgs: string[];
@@ -39,6 +40,7 @@ export interface Inputs {
 export async function getInputs(): Promise<Inputs> {
   return {
     bentoTag: core.getInput('bento-tag'),
+    ociBackend: core.getInput('oci-backend'),
     addHosts: Util.getInputList('add-hosts'),
     allow: Util.getInputList('allow'),
     buildArgs: Util.getInputList('build-args', {ignoreComma: true}),
@@ -77,7 +79,7 @@ export async function getArgs(inputs: Inputs, toolkit: Toolkit): Promise<Array<s
 }
 
 async function getBuildArgs(inputs: Inputs, context: string, toolkit: Toolkit): Promise<Array<string>> {
-  const args: Array<string> = ['containerize', inputs.bentoTag, '--backend', 'buildx'];
+  const args: Array<string> = ['containerize', inputs.bentoTag, '--backend', inputs.ociBackend];
   // NOTE: BentoML equivalent of --tag is --image-tag
   await Util.asyncForEach(inputs.tags, async tag => {
     args.push('--image-tag', tag);

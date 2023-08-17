@@ -9,6 +9,10 @@ inputs:
   bento-tag:
     description: "Bento tag to be containerize"
     required: true
+  oci-backend:
+    description: "OCI backend to use. Default to buildx"
+    required: false
+    default: 'buildx'
   add-hosts:
     description: "List of a customs host-to-IP mapping (e.g., docker:10.180.0.1)"
     required: false
