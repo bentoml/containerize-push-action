@@ -1,6 +1,7 @@
-name: "Containerize and push Bento"
-description: "Containerize and push Bento with Buildx (equivalent to docker/build-push-action)"
-author: "BentoML"
+# https://help.github.com/en/articles/metadata-syntax-for-github-actions
+name: Bento containerization and push
+description: Containerize and push Bento with Buildx (equivalent to docker/build-push-action)
+author: bentoml
 branding:
   icon: 'box'
   color: 'orange'

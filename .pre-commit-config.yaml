@@ -17,4 +17,5 @@ repos:
         entry: yarn run all
         verbose: true
         language: node
+        pass_filenames: false
         additional_dependencies: [yarn]
