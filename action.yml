@@ -94,13 +94,6 @@ inputs:
     description: "GitHub Token used to authenticate against a repository for Git context"
     default: ${{ github.token }}
     required: false
-outputs:
-  imageid:
-    description: 'Image ID'
-  digest:
-    description: 'Image digest'
-  metadata:
-    description: 'Build result metadata'
 runs:
   using: 'node16'
   main: 'dist/index.js'

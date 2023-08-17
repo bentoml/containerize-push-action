@@ -5,7 +5,6 @@ import * as actionsToolkit from '@docker/actions-toolkit';
 import {Context} from '@docker/actions-toolkit/lib/context';
 import {Docker} from '@docker/actions-toolkit/lib/docker/docker';
 import {GitHub} from '@docker/actions-toolkit/lib/github';
-import {Inputs as BuildxInputs} from '@docker/actions-toolkit/lib/buildx/inputs';
 import {Toolkit} from '@docker/actions-toolkit/lib/toolkit';
 import * as Helpers from './helpers';
 import * as context from './context';
@@ -84,36 +83,19 @@ actionsToolkit.run(
     });
 
     const args: string[] = await context.getArgs(inputs, toolkit);
-    await Helpers.getExecOutput('bentoml', args, {
-      ignoreReturnCode: true
-    }).then(res => {
-      if (res.stderr.length > 0 && res.exitCode != 0) {
-        throw new Error(`bentoml containerize failed with: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
+    await core.group(`bentoml containerize`, async () => {
+      try {
+        await Helpers.getExecOutput('bentoml', args, {
+          ignoreReturnCode: true
+        }).then(res => {
+          if (res.stderr.length > 0 && res.exitCode != 0) {
+            throw new Error(`bentoml containerize failed with: ${res.stderr.match(/(.*)\s*$/)?.[0]?.trim() ?? 'unknown error'}`);
+          }
+        });
+      } catch (e) {
+        core.info(e.message);
       }
     });
-
-    const imageID = BuildxInputs.resolveBuildImageID();
-    const metadata = BuildxInputs.resolveBuildMetadata();
-    const digest = BuildxInputs.resolveDigest();
-
-    if (imageID) {
-      await core.group(`ImageID`, async () => {
-        core.info(imageID);
-        core.setOutput('imageid', imageID);
-      });
-    }
-    if (digest) {
-      await core.group(`Digest`, async () => {
-        core.info(digest);
-        core.setOutput('digest', digest);
-      });
-    }
-    if (metadata) {
-      await core.group(`Metadata`, async () => {
-        core.info(metadata);
-        core.setOutput('metadata', metadata);
-      });
-    }
   },
   // post
   async () => {
