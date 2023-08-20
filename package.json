@@ -1,5 +1,5 @@
 {
-  "name": "containerize-and-push-action",
+  "name": "containerize-push-action",
   "version": "1.0.0",
   "description": "Docker's build-and-push-action subset, or equivalent for containerizing Bentos",
   "main": "lib/main.js",
