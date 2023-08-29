@@ -14,8 +14,8 @@ repos:
     hooks:
       - id: all
         name: Run all tools
-        entry: yarn run all
+        entry: pnpm all
         verbose: true
         language: node
         pass_filenames: false
-        additional_dependencies: [yarn]
+        additional_dependencies: [pnpm]
