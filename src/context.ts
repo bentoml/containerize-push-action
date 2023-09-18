@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as handlebars from 'handlebars';
 import {Context} from '@docker/actions-toolkit/lib/context';
+import {GitHub} from '@docker/actions-toolkit/lib/github';
 import {Inputs as BuildxInputs} from '@docker/actions-toolkit/lib/buildx/inputs';
 import {Toolkit} from '@docker/actions-toolkit/lib/toolkit';
 import {Util} from '@docker/actions-toolkit/lib/util';
@@ -10,6 +11,7 @@ export interface Inputs {
   ociBackend: string;
   addHosts: string[];
   allow: string[];
+  attests: string[];
   buildArgs: string[];
   buildContexts: string[];
   builder: string;
@@ -25,8 +27,10 @@ export interface Inputs {
   noCacheFilters: string[];
   outputs: string[];
   platforms: string[];
+  provenance: string;
   pull: boolean;
   push: boolean;
+  sbom: string;
   secrets: string[];
   secretFiles: string[];
   shmSize: string;
@@ -43,6 +47,7 @@ export async function getInputs(): Promise<Inputs> {
     ociBackend: core.getInput('oci-backend'),
     addHosts: Util.getInputList('add-hosts'),
     allow: Util.getInputList('allow'),
+    attests: Util.getInputList('attests', {ignoreComma: true}),
     buildArgs: Util.getInputList('build-args', {ignoreComma: true}),
     buildContexts: Util.getInputList('build-contexts', {ignoreComma: true}),
     builder: core.getInput('builder'),
@@ -58,8 +63,10 @@ export async function getInputs(): Promise<Inputs> {
     noCacheFilters: Util.getInputList('no-cache-filters'),
     outputs: Util.getInputList('outputs', {ignoreComma: true}),
     platforms: Util.getInputList('platforms'),
+    provenance: BuildxInputs.getProvenanceInput('provenance'),
     pull: core.getBooleanInput('pull'),
     push: core.getBooleanInput('push'),
+    sbom: core.getInput('sbom'),
     secrets: Util.getInputList('secrets', {ignoreComma: true}),
     secretFiles: Util.getInputList('secret-files', {ignoreComma: true}),
     shmSize: core.getInput('shm-size'),
@@ -89,6 +96,11 @@ async function getBuildArgs(inputs: Inputs, context: string, toolkit: Toolkit): 
   });
   if (inputs.allow.length > 0) {
     args.push('--allow', inputs.allow.join(','));
+  }
+  if (await toolkit.buildx.versionSatisfies('>=0.10.0')) {
+    await Util.asyncForEach(inputs.attests, async attest => {
+      args.push('--attest', attest);
+    });
   }
   await Util.asyncForEach(inputs.buildArgs, async buildArg => {
     args.push('--build-arg', buildArg);
@@ -124,6 +136,26 @@ async function getBuildArgs(inputs: Inputs, context: string, toolkit: Toolkit): 
   });
   if (inputs.platforms.length > 0) {
     args.push('--platform', inputs.platforms.join(','));
+  }
+  if (await toolkit.buildx.versionSatisfies('>=0.10.0')) {
+    if (inputs.provenance) {
+      args.push('--provenance', inputs.provenance);
+    } else if ((await toolkit.buildkit.versionSatisfies(inputs.builder, '>=0.11.0')) && !BuildxInputs.hasDockerExporter(inputs.outputs, inputs.load)) {
+      // if provenance not specified and BuildKit version compatible for
+      // attestation, set default provenance. Also needs to make sure user
+      // doesn't want to explicitly load the image to docker.
+      if (GitHub.context.payload.repository?.private ?? false) {
+        // if this is a private repository, we set the default provenance
+        // attributes being set in buildx: https://github.com/docker/buildx/blob/fb27e3f919dcbf614d7126b10c2bc2d0b1927eb6/build/build.go#L603
+        args.push('--provenance', BuildxInputs.resolveProvenanceAttrs(`mode=min,inline-only=true`));
+      } else {
+        // for a public repository, we set max provenance mode.
+        args.push('--provenance', BuildxInputs.resolveProvenanceAttrs(`mode=max`));
+      }
+    }
+    if (inputs.sbom) {
+      args.push('--sbom', inputs.sbom);
+    }
   }
   await Util.asyncForEach(inputs.secrets, async secret => {
     try {
